@@ -13,6 +13,10 @@ table.docutils td {
     text-align: right;
 }
 
+table.docutils.footnote td {
+    text-align: left;
+}
+
 table.docutils th {
     text-align: right;
 }
@@ -36,4 +40,8 @@ table.docutils th.head.stub {
     border: 0px;
     border-bottom: 1px solid #888;
     border-right: 1px solid #888;
+}
+
+table.footnote td.label {
+    width: .1px;
 }
