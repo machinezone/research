@@ -1,0 +1,597 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Comparison of Networking Solutions for Kubernetes &mdash; Comparison of Networking Solutions for Kubernetes 2 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Comparison of Networking Solutions for Kubernetes 2 documentation" href="#" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="comparison-of-networking-solutions-for-kubernetes">
+<h1>Comparison of Networking Solutions for Kubernetes<a class="headerlink" href="#comparison-of-networking-solutions-for-kubernetes" title="Permalink to this headline">¶</a></h1>
+<p>Kubernetes requires that each container in a cluster has a unique, routable IP. Kubernetes doesn&#8217;t assign IPs itself, leaving the task to third-party solutions.</p>
+<p>In this study, our goal was to find the solution with the lowest latency, highest throughput, and the lowest setup cost. Since our load is latency-sensitive, our intent is to measure high percentile latencies at relatively high network utilization. We particularly focused on the performance under 30–50% of the maximum load, because we think this best represents the most common use cases of a non-overloaded system.</p>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="competitors">
+<h2>Competitors<a class="headerlink" href="#competitors" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="docker-with-net-host">
+<span id="reference"></span><h3>Docker with <code class="docutils literal"><span class="pre">--net=host</span></code><a class="headerlink" href="#docker-with-net-host" title="Permalink to this headline">¶</a></h3>
+<p>This was our reference setup. All other competitors are compared against this setup.</p>
+<p>The <a class="reference external" href="https://docs.docker.com/engine/reference/run/#network-settings">&#8211;net=host</a> option means that containers inherit the IPs of their host machines, i.e. no network containerization is involved.</p>
+<p>A priori, no network containerization performs better than any network containerization; this is why we used this setup as a reference.</p>
+</div>
+<div class="section" id="flannel">
+<span id="id1"></span><h3>Flannel<a class="headerlink" href="#flannel" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://github.com/coreos/flannel">Flannel</a>  is a virtual network solution maintained by the <a class="reference external" href="https://coreos.com">CoreOS</a> project. It&#8217;s a well-tested, production ready solution, so it has the lowest setup cost.</p>
+<p>When you add a machine with flannel to the cluster, flannel does three things:</p>
+<ol class="arabic">
+<li><p class="first">Allocates a subnet for the new machine using <a class="reference external" href="https://github.com/coreos/etcd">etcd</a></p>
+</li>
+<li><p class="first">Creates a virtual <a class="reference external" href="http://www.linuxfoundation.org/collaborate/workgroups/networking/bridge">bridge interface</a> on the machine (called <em>docker0 bridge</em>)</p>
+</li>
+<li><p class="first">Sets up a packet forwarding <a class="reference external" href="https://github.com/coreos/flannel#backends">backend</a>:</p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">aws-vpc</span></code></dt>
+<dd><p class="first last">Register the machine subnet in the Amazon AWS instance table. The number of records in this table is limited by 50, i.e. you can&#8217;t have more than 50 machines in a cluster if you use flannel with <code class="docutils literal"><span class="pre">aws-vpc</span></code>. Also, this backend works only with Amazon&#8217;s AWS.</p>
+</dd>
+<dt><code class="docutils literal"><span class="pre">host-gw</span></code></dt>
+<dd><p class="first last">Foo bar baz.</p>
+</dd>
+<dt><code class="docutils literal"><span class="pre">vxlan</span></code></dt>
+<dd><p class="first last">Create a virtual <a class="reference external" href="https://en.wikipedia.org/wiki/Virtual_Extensible_LAN">VXLAN interface</a>.</p>
+</dd>
+</dl>
+</li>
+</ol>
+<p>Because flannel uses a bridge interface to forward packets, each packet goes through two network stacks when travelling from one container to another.</p>
+</div>
+<div class="section" id="ipvlan">
+<span id="id2"></span><h3>IPvlan<a class="headerlink" href="#ipvlan" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://www.kernel.org/doc/Documentation/networking/ipvlan.txt">IPvlan</a> is driver in the Linux kernel that lets you create virtual interfaces with unique IPs without having to use a bridge interface.</p>
+<p>To assign an IP to a container with IPvlan you have to:</p>
+<ol class="arabic simple">
+<li>Create a container without a network interface at all</li>
+<li>Create an ipvlan interface in the default network namespace</li>
+<li>Move the interface to the container&#8217;s network namespace</li>
+</ol>
+<p>IPvlan is a relatively new solution, so there are no ready-to-use tools to automate this process. This makes it difficult to deploy IPvlan with many machines and containers, i.e. the setup cost is high.</p>
+<p>However, IPvlan doesn&#8217;t require a bridge interface and forwards packets directly from the NIC to the virtual interface, so we expected it to perform better than flannel.</p>
+</div>
+</div>
+<div class="section" id="load-testing-scenario">
+<h2>Load Testing Scenario<a class="headerlink" href="#load-testing-scenario" title="Permalink to this headline">¶</a></h2>
+<p>For each competitor we run these steps:</p>
+<ol class="arabic simple">
+<li><a class="reference internal" href="#environment"><span>Set up networking on two physical machines</span></a></li>
+<li>Run <a class="reference external" href="https://github.com/MachineZone/tcpkali">tcpkali</a> in a container on one machine, let is send requests at a constant rate</li>
+<li>Run Nginx in a container on the other machine, let it respond with a fixed-size file</li>
+<li>Capture system metrics and tcpkali results</li>
+</ol>
+<p>We ran the benchmark with the request rate varying from 50,000 to 450,000 requests per second (RPS).</p>
+<p>On each request, Nginx responded with a static file of a fixed size: 350 B (100 B content, 250 B headers) or 4 KB.</p>
+</div>
+<div class="section" id="results">
+<h2>Results<a class="headerlink" href="#results" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>IPvlan shows the lowest latency and the highest maximum throughput. Flannel with <code class="docutils literal"><span class="pre">host-gw</span></code> and <code class="docutils literal"><span class="pre">aws-vpc</span></code> follows closely behind, however <code class="docutils literal"><span class="pre">host-gw</span></code> shows better results under maximum load.</li>
+<li>Flannel with <code class="docutils literal"><span class="pre">vxlan</span></code> shows the worst results in all tests. However, we suspect that its exceptionally poor 99.999 percentile is due to a bug.</li>
+<li>The results for a 4 KB response are similar to those for 350 B response, with two noticeable differences:<ul>
+<li>the maximum RPS point is much lower, because with 4 KB responses it takes only ≈270k RPS to fully load a 10 Gbps NIC</li>
+<li>IPvlan is much closer to <code class="docutils literal"><span class="pre">--net=host</span></code> near the throughput limit</li>
+</ul>
+</li>
+</ol>
+<p>Our current choice is flannel with <code class="docutils literal"><span class="pre">host-gw</span></code>. It doesn&#8217;t have many dependencies (e.g. no AWS or new Linux version required), it&#8217;s easy to set up compared to IPvlan, and it has sufficient performance characteristics. IPvlan is our backup solution. If at some point flannel adds IPvlan support, we&#8217;ll switch to it.</p>
+<p>Even though <code class="docutils literal"><span class="pre">aws-vpc</span></code> performed slightly better than <code class="docutils literal"><span class="pre">host-gw</span></code>, it&#8217;s 50 machine limitation and the fact that it&#8217;s hardwired to Amazon&#8217;s AWS are a dealbreaker for us.</p>
+<div class="section" id="rps-350-b">
+<h3>50,000 RPS, 350 B<a class="headerlink" href="#rps-350-b" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-50000rps.png"><img alt="_images/latency-50000rps.png" class="align-center" src="_images/latency-50000rps.png" style="width: 60%;" /></a>
+<p>At 50,000 requests per second, all candidates show acceptable performance. You can already see the main trend: IPVlan performs the best, <code class="docutils literal"><span class="pre">host-gw</span></code> and <code class="docutils literal"><span class="pre">aws-vpc</span></code> follow closely behind, <code class="docutils literal"><span class="pre">vxlan</span></code> is the worst.</p>
+</div>
+<div class="section" id="id3">
+<h3>150,000 RPS, 350 B<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-150000rps.png"><img alt="_images/latency-150000rps.png" class="align-center" src="_images/latency-150000rps.png" style="width: 60%;" /></a>
+<table border="1" class="docutils" id="id19">
+<caption><span class="caption-text">Latency percentiles at 150,000 RPS (≈30% of maximum RPS), ms</span><a class="headerlink" href="#id19" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head stub">Setup</th>
+<th class="head">95 %ile</th>
+<th class="head">99 %ile</th>
+<th class="head">99.5 %ile</th>
+<th class="head">99.99 %ile</th>
+<th class="head">99.999 %ile</th>
+<th class="head">Max Latency</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><th class="stub">IPvlan</th>
+<td><font color="#008000">0.7</font></td>
+<td><font color="#008000">0.9</font></td>
+<td><font color="#008000">1</font></td>
+<td><font color="#FF0000">6.7</font></td>
+<td><font color="#FFD700">9.9</font></td>
+<td><font color="#9ACD32">18</font></td>
+</tr>
+<tr class="row-odd"><th class="stub"><code class="docutils literal"><span class="pre">aws-vpc</span></code></th>
+<td><font color="#9ACD32">0.9</font></td>
+<td><font color="#9ACD32">1.1</font></td>
+<td><font color="#9ACD32">1.2</font></td>
+<td><font color="#9ACD32">6.5</font></td>
+<td><font color="#9ACD32">9.8</font></td>
+<td><font color="#008000">15.7</font></td>
+</tr>
+<tr class="row-even"><th class="stub"><code class="docutils literal"><span class="pre">host-gw</span></code></th>
+<td><font color="#9ACD32">0.9</font></td>
+<td><font color="#9ACD32">1.1</font></td>
+<td><font color="#9ACD32">1.2</font></td>
+<td><font color="#008000">5.9</font></td>
+<td><font color="#008000">9.6</font></td>
+<td><font color="#FFD700">24.3</font></td>
+</tr>
+<tr class="row-odd"><th class="stub"><code class="docutils literal"><span class="pre">vxlan</span></code></th>
+<td><font color="#FF0000">1.2</font></td>
+<td><font color="#FF0000">1.5</font></td>
+<td><font color="#FF0000">1.6</font></td>
+<td><font color="#FFD700">6.6</font></td>
+<td><font color="#FF0000">201.9</font></td>
+<td><font color="#FF0000">405.3</font></td>
+</tr>
+<tr class="row-even"><th class="stub"><code class="docutils literal"><span class="pre">--net=host</span></code></th>
+<td>0.5</td>
+<td>0.6</td>
+<td>0.6</td>
+<td>4.8</td>
+<td>8.9</td>
+<td>11.8</td>
+</tr>
+</tbody>
+</table>
+<p>IPvlan is slightly better than <code class="docutils literal"><span class="pre">host-gw</span></code> and <code class="docutils literal"><span class="pre">aws-vpc</span></code>, but it has the worst 99.99 percentile. <code class="docutils literal"><span class="pre">host-gw</span></code> performs slightly better than <code class="docutils literal"><span class="pre">aws-vpc</span></code>.</p>
+</div>
+<div class="section" id="rps250-350b">
+<span id="id4"></span><h3>250,000 RPS, 350 B<a class="headerlink" href="#rps250-350b" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-250000rps.png"><img alt="_images/latency-250000rps.png" class="align-center" src="_images/latency-250000rps.png" style="width: 60%;" /></a>
+<p>This load is also expected to be common on production, so these results are particularly important.</p>
+<table border="1" class="docutils" id="id20">
+<caption><span class="caption-text">Latency percentiles at 250,000 RPS (≈50% of maximum RPS), ms</span><a class="headerlink" href="#id20" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Setup</th>
+<th class="head">95 %ile</th>
+<th class="head">99 %ile</th>
+<th class="head">99.5 %ile</th>
+<th class="head">99.99 %ile</th>
+<th class="head">99.999 %ile</th>
+<th class="head">Max Latency</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>IPvlan</td>
+<td><font color="#008000">1</font></td>
+<td><font color="#008000">1.2</font></td>
+<td><font color="#008000">1.4</font></td>
+<td><font color="#9ACD32">6.3</font></td>
+<td><font color="#9ACD32">10.1</font></td>
+<td><font color="#008000">24.3</font></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">aws-vpc</span></code></td>
+<td><font color="#FFD700">1.2</font></td>
+<td><font color="#FFD700">1.5</font></td>
+<td><font color="#9ACD32">1.6</font></td>
+<td><font color="#008000">5.6</font></td>
+<td><font color="#008000">9.4</font></td>
+<td><font color="#9ACD32">27.3</font></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">host-gw</span></code></td>
+<td><font color="#9ACD32">1.1</font></td>
+<td><font color="#9ACD32">1.4</font></td>
+<td><font color="#9ACD32">1.6</font></td>
+<td><font color="#FFD700">8.6</font></td>
+<td><font color="#FFD700">11.2</font></td>
+<td><font color="#FFD700">40.1</font></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">vxlan</span></code></td>
+<td><font color="#FF0000">1.5</font></td>
+<td><font color="#FF0000">1.9</font></td>
+<td><font color="#FF0000">2.1</font></td>
+<td><font color="#FF0000">16.6</font></td>
+<td><font color="#FF0000">202.4</font></td>
+<td><font color="#FF0000">245.5</font></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">--net=host</span></code></td>
+<td>0.7</td>
+<td>0.8</td>
+<td>0.9</td>
+<td>3.7</td>
+<td>7.7</td>
+<td>16.8</td>
+</tr>
+</tbody>
+</table>
+<p>IPvlan again shows the best performance, but <code class="docutils literal"><span class="pre">aws-vpc</span></code> has the best 99.99 and 99.999 percentiles. <code class="docutils literal"><span class="pre">host-gw</span></code> outperforms <code class="docutils literal"><span class="pre">aws-vpc</span></code> in 95 and 99 percentiles.</p>
+</div>
+<div class="section" id="id5">
+<h3>350,000 RPS, 350 B<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-350000rps-no-vxlan.png"><img alt="_images/latency-350000rps-no-vxlan.png" class="align-center" src="_images/latency-350000rps-no-vxlan.png" style="width: 60%;" /></a>
+<p>In most cases, the latency is close to the <a class="reference internal" href="#rps250-350b"><span>250,000 RPS, 350 B</span></a> case, but it&#8217;s rapidly growing after 99.5 percentile, which means that we are getting close to the maximum RPS.</p>
+</div>
+<div class="section" id="rps450-350b">
+<span id="id6"></span><h3>450,000 RPS, 350 B<a class="headerlink" href="#rps450-350b" title="Permalink to this headline">¶</a></h3>
+<p>This is the maximum RPS that produced sensible results.</p>
+<p>IPvlan leads again with latency ≈30% worse than that of <code class="docutils literal"><span class="pre">--net-host</span></code>:</p>
+<a class="reference internal image-reference" href="_images/latency---net=host-450000rps.png"><img alt="_images/latency---net=host-450000rps.png" class="align-center" src="_images/latency---net=host-450000rps.png" style="width: 60%;" /></a>
+<a class="reference internal image-reference" href="_images/latency-ipvlan-450000rps.png"><img alt="_images/latency-ipvlan-450000rps.png" class="align-center" src="_images/latency-ipvlan-450000rps.png" style="width: 60%;" /></a>
+<p>Interestingly,  <code class="docutils literal"><span class="pre">host-gw</span></code> performs much better than <code class="docutils literal"><span class="pre">aws-vpc</span></code>:</p>
+<a class="reference internal image-reference" href="_images/latency-450000rps.png"><img alt="_images/latency-450000rps.png" class="align-center" src="_images/latency-450000rps.png" style="width: 60%;" /></a>
+</div>
+<div class="section" id="rps500-350b">
+<span id="id7"></span><h3>500,000 RPS, 350 B<a class="headerlink" href="#rps500-350b" title="Permalink to this headline">¶</a></h3>
+<p>Under 500,000 RPS, only IPvlan still works and even outperforms <code class="docutils literal"><span class="pre">--net=host</span></code>, but the latency is so high that we think it would be of no use to latency-sensitive applications.</p>
+<a class="reference internal image-reference" href="_images/latency-500000rps-no-host-gw.png"><img alt="_images/latency-500000rps-no-host-gw.png" class="align-center" src="_images/latency-500000rps-no-host-gw.png" style="width: 60%;" /></a>
+</div>
+<div class="section" id="k-rps-4-kb">
+<h3>50k RPS, 4 KB<a class="headerlink" href="#k-rps-4-kb" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-50000rps1.png"><img alt="_images/latency-50000rps1.png" class="align-center" src="_images/latency-50000rps1.png" style="width: 60%;" /></a>
+<p>Bigger response results in higher network usage, but the leaderboard looks pretty much the same as with the smaller response:</p>
+<table border="1" class="docutils" id="id21">
+<caption><span class="caption-text">Latency percentiles at 50k RPS (≈20% of maximum RPS), ms</span><a class="headerlink" href="#id21" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Setup</th>
+<th class="head">95 %ile</th>
+<th class="head">99 %ile</th>
+<th class="head">99.5 %ile</th>
+<th class="head">99.99 %ile</th>
+<th class="head">99.999 %ile</th>
+<th class="head">Max Latency</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>IPvlan</td>
+<td><font color="#008000">0.6</font></td>
+<td><font color="#008000">0.8</font></td>
+<td><font color="#008000">0.9</font></td>
+<td><font color="#9ACD32">5.7</font></td>
+<td><font color="#008000">9.6</font></td>
+<td><font color="#008000">15.8</font></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">aws-vpc</span></code></td>
+<td><font color="#9ACD32">0.7</font></td>
+<td><font color="#9ACD32">0.9</font></td>
+<td><font color="#9ACD32">1</font></td>
+<td><font color="#008000">5.6</font></td>
+<td><font color="#9ACD32">9.8</font></td>
+<td><font color="#FF0000">403.1</font></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">host-gw</span></code></td>
+<td><font color="#9ACD32">0.7</font></td>
+<td><font color="#9ACD32">0.9</font></td>
+<td><font color="#9ACD32">1</font></td>
+<td><font color="#FF0000">7.4</font></td>
+<td><font color="#FFD700">12</font></td>
+<td><font color="#9ACD32">202.5</font></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">vxlan</span></code></td>
+<td><font color="#FF0000">0.8</font></td>
+<td><font color="#FF0000">1.1</font></td>
+<td><font color="#FF0000">1.2</font></td>
+<td><font color="#9ACD32">5.7</font></td>
+<td><font color="#FF0000">201.5</font></td>
+<td><font color="#FFD700">402.5</font></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">--net=host</span></code></td>
+<td>0.5</td>
+<td>0.7</td>
+<td>0.7</td>
+<td>6.4</td>
+<td>9.9</td>
+<td>14.8</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id8">
+<h3>150k RPS, 4 KB<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-150000rps1.png"><img alt="_images/latency-150000rps1.png" class="align-center" src="_images/latency-150000rps1.png" style="width: 60%;" /></a>
+<p><code class="docutils literal"><span class="pre">Host-gw</span></code> has a surprisingly poor 99.999 percentile, but it still shows good results for lower percentiles.</p>
+<table border="1" class="docutils" id="id22">
+<caption><span class="caption-text">Latency percentiles at 150k RPS (≈60% of maximum RPS), ms</span><a class="headerlink" href="#id22" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Setup</th>
+<th class="head">95 %ile</th>
+<th class="head">99 %ile</th>
+<th class="head">99.5 %ile</th>
+<th class="head">99.99 %ile</th>
+<th class="head">99.999 %ile</th>
+<th class="head">Max Latency</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>IPvlan</td>
+<td><font color="#008000">1</font></td>
+<td><font color="#008000">1.3</font></td>
+<td><font color="#008000">1.5</font></td>
+<td><font color="#008000">5.3</font></td>
+<td><font color="#9ACD32">201.3</font></td>
+<td><font color="#FFD700">405.7</font></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">aws-vpc</span></code></td>
+<td><font color="#9ACD32">1.2</font></td>
+<td><font color="#9ACD32">1.5</font></td>
+<td><font color="#9ACD32">1.7</font></td>
+<td><font color="#9ACD32">6</font></td>
+<td><font color="#008000">11.1</font></td>
+<td><font color="#008000">405.1</font></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">host-gw</span></code></td>
+<td><font color="#9ACD32">1.2</font></td>
+<td><font color="#9ACD32">1.5</font></td>
+<td><font color="#9ACD32">1.7</font></td>
+<td><font color="#FF0000">7</font></td>
+<td><font color="#FF0000">211</font></td>
+<td><font color="#9ACD32">405.3</font></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">vxlan</span></code></td>
+<td><font color="#FF0000">1.4</font></td>
+<td><font color="#FF0000">1.7</font></td>
+<td><font color="#FF0000">1.9</font></td>
+<td><font color="#9ACD32">6</font></td>
+<td><font color="#FFD700">202.51</font></td>
+<td><font color="#FF0000">406</font></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">--net=host</span></code></td>
+<td>0.9</td>
+<td>1.2</td>
+<td>1.3</td>
+<td>4.2</td>
+<td>9.5</td>
+<td>404.7</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id9">
+<h3>250k RPS, 4 KB<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<a class="reference internal image-reference" href="_images/latency-250000rps-no-vxlan.png"><img alt="_images/latency-250000rps-no-vxlan.png" class="align-center" src="_images/latency-250000rps-no-vxlan.png" style="width: 60%;" /></a>
+<p>This is the maximum RPS with big response. <code class="docutils literal"><span class="pre">aws-vpc</span></code> performs much better than  <code class="docutils literal"><span class="pre">host-gw</span></code>, unlike the <a class="reference internal" href="#rps450-350b"><span>small response case</span></a>.</p>
+<p><code class="docutils literal"><span class="pre">Vxlan</span></code> was excluded from the graph once again.</p>
+</div>
+</div>
+<div class="section" id="test-environment">
+<span id="environment"></span><h2>Test Environment<a class="headerlink" href="#test-environment" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="background">
+<h3>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h3>
+<p>To understand this article and reproduce our test environment, you should be familiar with the basics of high performance.</p>
+<p>These articles provide useful insights on the topic:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://blog.cloudflare.com/how-to-receive-a-million-packets/">How to receive a million packets per second</a> <em>by CloudFlare</em></li>
+<li><a class="reference external" href="https://blog.cloudflare.com/how-to-achieve-low-latency/">How to achieve low latency with 10Gbps Ethernet</a> <em>by CloudFlare</em></li>
+<li><a class="reference external" href="https://www.kernel.org/doc/Documentation/networking/scaling.txt">Scaling in the Linux Networking Stack</a> <em>from the Linux kernel documentation</em></li>
+</ul>
+</div>
+<div class="section" id="machines">
+<h3>Machines<a class="headerlink" href="#machines" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>We use two <a class="reference external" href="https://aws.amazon.com/ec2/instance-types/#c4">c4.8xlarge instances</a> by Amazon AWS EC2 with CentOS 7.</li>
+<li>Both machines have <a class="reference external" href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enhanced-networking.html">enhanced networking</a> enabled.</li>
+<li>Each machine is <a class="reference external" href="https://en.wikipedia.org/wiki/Non-uniform_memory_access">NUMA</a>  with 2 processors; each processor has 9 cores, each core has 2 hyperthreads, which effectively allows to run 36 threads on each machine.</li>
+<li>Each machine has a 10Gbps network interface card (NIC) and 60 GB memory.</li>
+<li>To support enhanced networking and IPvlan, we&#8217;ve installed <a class="reference external" href="http://elrepo.org/linux/kernel/el7/x86_64/RPMS/">Linux kernel 4.3.0</a> with Intel&#8217;s ixgbevf driver.</li>
+</ul>
+</div>
+<div class="section" id="setup">
+<h3>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h3>
+<p>Modern NICs offer <a class="reference external" href="https://msdn.microsoft.com/en-us/library/windows/hardware/ff556942(v=vs.85).aspx">Receive Side Scaling (RSS)</a> via multiple <a class="reference external" href="https://en.wikipedia.org/wiki/Interrupt_request_(PC_architecture)">interrupt request (IRQ)</a> lines. EC2 provides only two interrupt lines in a virtualized environment, so we tested several RSS and <a class="reference external" href="https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Performance_Tuning_Guide/network-rps.html">Receive Packet Steering (RPS) Receive Packet Steering (RPS)</a> configurations and ended up with following configuration, partly suggested by the Linux kernel documentation:</p>
+<dl class="docutils">
+<dt>IRQ</dt>
+<dd><p class="first">The first core on each of the two NUMA nodes is configured to receive interrupts from NIC.</p>
+<p>To match a CPU to a NUMA node, use <code class="docutils literal"><span class="pre">lscpu</span></code>:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>lscpu <span class="p">|</span> grep NUMA
+NUMA node<span class="o">(</span>s<span class="o">)</span>:          2
+NUMA node0 CPU<span class="o">(</span>s<span class="o">)</span>:     0-8,18-26
+NUMA node1 CPU<span class="o">(</span>s<span class="o">)</span>:     9-17,27-35
+</pre></div>
+</div>
+<p>This is done by writing 0 and 9 to <em>/proc/irq/&lt;num&gt;/smp_affinity_list</em>, where IRQ numbers are obtained with <code class="docutils literal"><span class="pre">grep</span> <span class="pre">eth0</span> <span class="pre">/proc/interrupts</span></code>:</p>
+<div class="last highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">echo </span><span class="m">0</span> &gt; /proc/irq/265/smp_affinity_list
+<span class="nv">$ </span><span class="nb">echo </span><span class="m">9</span> &gt; /proc/irq/266/smp_affinity_list
+</pre></div>
+</div>
+</dd>
+<dt>RPS</dt>
+<dd><p class="first">Several combinations for RPS have been tested. To improve latency, we offloaded the IRQ handling processors by using only CPUs 1–8 and 10–17. Unlike IRQ&#8217;s <em>smp_affinity</em>, the <em>rps_cpus</em> sysfs file entry doesn&#8217;t have a <em>_list</em> counterpart, so we use bitmasks to list the CPUs to which RPS can forward traffic<a class="footnote-reference" href="#id17" id="id14"><sup>1</sup></a>:</p>
+<div class="last highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;00000000,0003fdfe&quot;</span> &gt; /sys/class/net/eth0/queues/rx-0/rps_cpus
+<span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;00000000,0003fdfe&quot;</span> &gt; /sys/class/net/eth0/queues/rx-1/rps_cpus
+</pre></div>
+</div>
+</dd>
+<dt>Transmit Packet Steering (XPS)</dt>
+<dd><p class="first">All NUMA 0 processors (including HyperThreading, i.e. CPUs 0-8, 18-26) were set to tx-0 and NUMA 1 (CPUs 9-17, 27-37) to tx-1<a class="footnote-reference" href="#id18" id="id15"><sup>2</sup></a>:</p>
+<div class="last highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;00000000,07fc01ff&quot;</span> &gt; /sys/class/net/eth0/queues/tx-0/xps_cpus
+<span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;0000000f,f803fe00&quot;</span> &gt; /sys/class/net/eth0/queues/tx-1/xps_cpus
+</pre></div>
+</div>
+</dd>
+<dt>Receive Flow Steering (RFS)</dt>
+<dd><p class="first">We&#8217;re planning to use 60k permanent connections, official documentation suggests to round up it to the nearest power of two:</p>
+<div class="last highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">echo </span><span class="m">65536</span> &gt; /proc/sys/net/core/rps_sock_flow_entries
+<span class="nv">$ </span><span class="nb">echo </span><span class="m">32768</span> &gt; /sys/class/net/eth0/queues/rx-0/rps_flow_cnt
+<span class="nv">$ </span><span class="nb">echo </span><span class="m">32768</span> &gt; /sys/class/net/eth0/queues/rx-1/rps_flow_cnt
+</pre></div>
+</div>
+</dd>
+<dt>Nginx</dt>
+<dd><p class="first">Nginx uses 18 workers, each worker has it&#8217;s own CPU (0-17). This is set by the <a class="reference external" href="http://nginx.org/en/docs/ngx_core_module.html#worker_cpu_affinity">worker_cpu_affinity</a> option:</p>
+<div class="last highlight-nginx"><div class="highlight"><pre><span class="k">workers</span> <span class="mi">18</span><span class="p">;</span>
+<span class="k">worker_cpu_affinity</span> <span class="mi">1</span> <span class="mi">10</span> <span class="mi">100</span> <span class="mi">1000</span> <span class="mi">10000</span> <span class="s">...</span><span class="p">;</span>
+</pre></div>
+</div>
+</dd>
+<dt><a class="reference external" href="https://github.com/MachineZone/tcpkali">Tcpkali</a></dt>
+<dd><p class="first">Tcpkali doesn&#8217;t have built-in CPU affinity support. In order to make use of RFS, we run tcpkali in a taskset and tune the scheduler to make thread migrations happen rarely:</p>
+<div class="last highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">echo </span><span class="m">10000000</span> &gt; /proc/sys/kernel/sched_migration_cost_ns
+<span class="nv">$ </span>taskset -ac 0-17 tcpkali --threads <span class="m">18</span> ...
+</pre></div>
+</div>
+</dd>
+</dl>
+<p>This setup allows us to spread interrupt load across the CPU cores more uniformly and achieve better throughput with the same latency compared to the other setups we have tried.</p>
+<p>Cores 0 and 9 deal exclusively with NIC interrupts and don&#8217;t serve packets, but they still are the most busy ones:</p>
+<a class="reference internal image-reference" href="_images/cpu-load-tuned.png"><img alt="_images/cpu-load-tuned.png" class="align-center" src="_images/cpu-load-tuned.png" style="width: 500px;" /></a>
+<p>RedHat&#8217;s <a class="reference external" href="https://fedorahosted.org/tuned/">tuned</a> was also used with the network-latency profile on.</p>
+<p>To minimize the influence of nf_conntrack, <a class="reference external" href="http://serverfault.com/a/536303/99164">NOTRACK rules were added</a>.</p>
+<p>Sysctls was tuned to support large number of tcp connections:</p>
+<div class="highlight-cfg"><div class="highlight"><pre><span class="na">fs.file-max</span> <span class="o">=</span> <span class="s">1024000</span>
+<span class="na">net.ipv4.ip_local_port_range</span> <span class="o">=</span> <span class="s">&quot;2000 65535&quot;</span>
+<span class="na">net.ipv4.tcp_max_tw_buckets</span> <span class="o">=</span> <span class="s">2000000</span>
+<span class="na">net.ipv4.tcp_tw_reuse</span> <span class="o">=</span> <span class="s">1</span>
+<span class="na">net.ipv4.tcp_tw_recycle</span> <span class="o">=</span> <span class="s">1</span>
+<span class="na">net.ipv4.tcp_fin_timeout</span> <span class="o">=</span> <span class="s">10</span>
+<span class="na">net.ipv4.tcp_slow_start_after_idle</span> <span class="o">=</span> <span class="s">0</span>
+<span class="na">net.ipv4.tcp_low_latency</span> <span class="o">=</span> <span class="s">1</span>
+</pre></div>
+</div>
+<p class="rubric">Footnotes</p>
+<table class="docutils footnote" frame="void" id="id17" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id14">[1]</a></td><td><a class="reference external" href="https://www.kernel.org/doc/Documentation/networking/scaling.txt">Linux kernel documentation: RPS Configuration</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id18" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id15">[2]</a></td><td><a class="reference external" href="https://www.kernel.org/doc/Documentation/networking/scaling.txt">Linux kernel documentation: XPS Configuration</a></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Comparison of Networking Solutions for Kubernetes</a><ul>
+<li><a class="reference internal" href="#competitors">Competitors</a><ul>
+<li><a class="reference internal" href="#docker-with-net-host">Docker with <code class="docutils literal"><span class="pre">--net=host</span></code></a></li>
+<li><a class="reference internal" href="#flannel">Flannel</a></li>
+<li><a class="reference internal" href="#ipvlan">IPvlan</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#load-testing-scenario">Load Testing Scenario</a></li>
+<li><a class="reference internal" href="#results">Results</a><ul>
+<li><a class="reference internal" href="#rps-350-b">50,000 RPS, 350 B</a></li>
+<li><a class="reference internal" href="#id3">150,000 RPS, 350 B</a></li>
+<li><a class="reference internal" href="#rps250-350b">250,000 RPS, 350 B</a></li>
+<li><a class="reference internal" href="#id5">350,000 RPS, 350 B</a></li>
+<li><a class="reference internal" href="#rps450-350b">450,000 RPS, 350 B</a></li>
+<li><a class="reference internal" href="#rps500-350b">500,000 RPS, 350 B</a></li>
+<li><a class="reference internal" href="#k-rps-4-kb">50k RPS, 4 KB</a></li>
+<li><a class="reference internal" href="#id8">150k RPS, 4 KB</a></li>
+<li><a class="reference internal" href="#id9">250k RPS, 4 KB</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#test-environment">Test Environment</a><ul>
+<li><a class="reference internal" href="#background">Background</a></li>
+<li><a class="reference internal" href="#machines">Machines</a></li>
+<li><a class="reference internal" href="#setup">Setup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Pavel Khusainov, edited by Konstantin Molchanov.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.6</a>
+      
+      |
+      <a href="_sources/index.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

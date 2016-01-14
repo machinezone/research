@@ -1,0 +1,39 @@
+table.docutils {
+    border: 0px;
+    -webkit-box-shadow: 0px 0px 0px #fff;
+    box-shadow: 0px 0px 0px #fff;
+}
+
+table.docutils caption {
+    margin-bottom: .7em;
+}
+
+table.docutils td {
+    border: 0px;
+    text-align: right;
+}
+
+table.docutils th {
+    text-align: right;
+}
+
+table.docutils th.stub {
+    border: 0px;
+    border-right: 1px solid #888;
+    font-size: .7em;
+    padding-top: .7em;
+    padding-right: 1.5em;
+}
+
+table.docutils th.head {
+    border: 0px;
+    border-bottom: 1px solid #888;
+    font-size: .7em;
+    padding-bottom: 1em;
+}
+
+table.docutils th.head.stub {
+    border: 0px;
+    border-bottom: 1px solid #888;
+    border-right: 1px solid #888;
+}
