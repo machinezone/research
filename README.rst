@@ -6,4 +6,4 @@ Welcome to the Machine Zone Research repository! Here we publish studies, benchm
 
 Contents:
 
--   `Comparison of Networking Solutions for Kubernetes <http://machinezone.github.io/research/>`__
+-   `Comparison of Networking Solutions for Kubernetes <http://machinezone.github.io/research/networking-solutions-for-kubernetes/>`__
