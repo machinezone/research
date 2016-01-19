@@ -69,7 +69,7 @@
 <dd><p class="first last">Register the machine subnet in the Amazon AWS instance table. The number of records in this table is limited by 50, i.e. you can&#8217;t have more than 50 machines in a cluster if you use flannel with <code class="docutils literal"><span class="pre">aws-vpc</span></code>. Also, this backend works only with Amazon&#8217;s AWS.</p>
 </dd>
 <dt><code class="docutils literal"><span class="pre">host-gw</span></code></dt>
-<dd><p class="first last">Foo bar baz.</p>
+<dd><p class="first last">Create IP routes to subnets via remote machine IPs. Requires direct layer2 connectivity between hosts running flannel.</p>
 </dd>
 <dt><code class="docutils literal"><span class="pre">vxlan</span></code></dt>
 <dd><p class="first last">Create a virtual <a class="reference external" href="https://en.wikipedia.org/wiki/Virtual_Extensible_LAN">VXLAN interface</a>.</p>
@@ -116,7 +116,7 @@
 </li>
 </ol>
 <p>Our current choice is flannel with <code class="docutils literal"><span class="pre">host-gw</span></code>. It doesn&#8217;t have many dependencies (e.g. no AWS or new Linux version required), it&#8217;s easy to set up compared to IPvlan, and it has sufficient performance characteristics. IPvlan is our backup solution. If at some point flannel adds IPvlan support, we&#8217;ll switch to it.</p>
-<p>Even though <code class="docutils literal"><span class="pre">aws-vpc</span></code> performed slightly better than <code class="docutils literal"><span class="pre">host-gw</span></code>, it&#8217;s 50 machine limitation and the fact that it&#8217;s hardwired to Amazon&#8217;s AWS are a dealbreaker for us.</p>
+<p>Even though <code class="docutils literal"><span class="pre">aws-vpc</span></code> performed slightly better than <code class="docutils literal"><span class="pre">host-gw</span></code>, its 50 machine limitation and the fact that it&#8217;s hardwired to Amazon&#8217;s AWS are a dealbreaker for us.</p>
 <div class="section" id="rps-350-b">
 <h3>50,000 RPS, 350 B<a class="headerlink" href="#rps-350-b" title="Permalink to this headline">¶</a></h3>
 <a class="reference internal image-reference" href="_images/latency-50000rps.png"><img alt="_images/latency-50000rps.png" class="align-center" src="_images/latency-50000rps.png" style="width: 60%;" /></a>
