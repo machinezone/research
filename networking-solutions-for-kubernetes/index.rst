@@ -54,7 +54,7 @@ When you add a machine with flannel to the cluster, flannel does three things:
         Register the machine subnet in the Amazon AWS instance table. The number of records in this table is limited by 50, i.e. you can't have more than 50 machines in a cluster if you use flannel with ``aws-vpc``. Also, this backend works only with Amazon's AWS.
 
     ``host-gw``
-        Foo bar baz.
+        Create IP routes to subnets via remote machine IPs. Requires direct layer2 connectivity between hosts running flannel.
 
     ``vxlan``
         Create a virtual `VXLAN interface <https://en.wikipedia.org/wiki/Virtual_Extensible_LAN>`__.
@@ -112,7 +112,7 @@ Results
 
 Our current choice is flannel with ``host-gw``. It doesn't have many dependencies (e.g. no AWS or new Linux version required), it's easy to set up compared to IPvlan, and it has sufficient performance characteristics. IPvlan is our backup solution. If at some point flannel adds IPvlan support, we'll switch to it.
 
-Even though ``aws-vpc`` performed slightly better than ``host-gw``, it's 50 machine limitation and the fact that it's hardwired to Amazon's AWS are a dealbreaker for us.
+Even though ``aws-vpc`` performed slightly better than ``host-gw``, its 50 machine limitation and the fact that it's hardwired to Amazon's AWS are a dealbreaker for us.
 
 
 50,000 RPS, 350 B

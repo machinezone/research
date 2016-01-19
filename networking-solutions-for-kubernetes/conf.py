@@ -50,7 +50,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Comparison of Networking Solutions for Kubernetes'
-copyright = '2015, Pavel Khusainov, edited by Konstantin Molchanov'
+copyright = 'MachineZone'
 author = 'Pavel Khusainov, edited by Konstantin Molchanov'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -179,7 +179,7 @@ html_sidebars = {
 #html_show_sourcelink = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
-#html_show_sphinx = True
+html_show_sphinx = False 
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 #html_show_copyright = True
