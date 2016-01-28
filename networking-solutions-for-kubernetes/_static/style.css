@@ -4,6 +4,10 @@ table.docutils {
     box-shadow: 0px 0px 0px #fff;
 }
 
+table.footnote td.label {
+    width: .1px;
+}
+
 table.docutils caption {
     margin-bottom: .7em;
 }
@@ -13,7 +17,7 @@ table.docutils td {
     text-align: right;
 }
 
-table.docutils.footnote td {
+table.footnote td {
     text-align: left;
 }
 
@@ -42,6 +46,7 @@ table.docutils th.head.stub {
     border-right: 1px solid #888;
 }
 
-table.footnote td.label {
-    width: .1px;
+div.footer {
+    text-align: left;
+    width: 50%;
 }
