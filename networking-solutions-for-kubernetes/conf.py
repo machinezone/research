@@ -50,8 +50,9 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Comparison of Networking Solutions for Kubernetes'
-copyright = 'MachineZone'
-author = 'Pavel Khusainov, edited by Konstantin Molchanov'
+copyright = '2016 Machine Zone, Inc.  All rights reserved.  No part of this publication may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without attributing the authors and including this copyright notice, except in the case of brief quotations'
+
+author = 'MachineZone'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -118,7 +119,9 @@ html_theme = 'alabaster'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    'show_powered_by': False        
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
