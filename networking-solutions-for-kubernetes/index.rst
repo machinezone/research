@@ -533,9 +533,10 @@ Sysctls was tuned to support large number of tcp connections:
    net.ipv4.tcp_slow_start_after_idle = 0
    net.ipv4.tcp_low_latency = 1
 
-.. disqus::
 
 .. rubric:: Footnotes
 
 .. [#] `Linux kernel documentation: RPS Configuration <https://www.kernel.org/doc/Documentation/networking/scaling.txt>`__
 .. [#] `Linux kernel documentation: XPS Configuration <https://www.kernel.org/doc/Documentation/networking/scaling.txt>`__
+
+.. disqus::
