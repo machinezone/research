@@ -27,6 +27,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/disqus.js"></script>
     <link rel="top" title="Comparison of Networking Solutions for Kubernetes 2 documentation" href="#" />
    
   
@@ -454,35 +455,35 @@
 <dt>IRQ</dt>
 <dd><p class="first">The first core on each of the two NUMA nodes is configured to receive interrupts from NIC.</p>
 <p>To match a CPU to a NUMA node, use <code class="docutils literal"><span class="pre">lscpu</span></code>:</p>
-<div class="highlight-bash"><div class="highlight"><pre>$ lscpu <span class="p">|</span> grep NUMA
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ lscpu <span class="p">|</span> grep NUMA
 NUMA node<span class="o">(</span>s<span class="o">)</span>:          2
 NUMA node0 CPU<span class="o">(</span>s<span class="o">)</span>:     0-8,18-26
 NUMA node1 CPU<span class="o">(</span>s<span class="o">)</span>:     9-17,27-35
 </pre></div>
 </div>
 <p>This is done by writing 0 and 9 to <em>/proc/irq/&lt;num&gt;/smp_affinity_list</em>, where IRQ numbers are obtained with <code class="docutils literal"><span class="pre">grep</span> <span class="pre">eth0</span> <span class="pre">/proc/interrupts</span></code>:</p>
-<div class="last highlight-bash"><div class="highlight"><pre>$ <span class="nb">echo</span> <span class="m">0</span> &gt; /proc/irq/265/smp_affinity_list
+<div class="last highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="m">0</span> &gt; /proc/irq/265/smp_affinity_list
 $ <span class="nb">echo</span> <span class="m">9</span> &gt; /proc/irq/266/smp_affinity_list
 </pre></div>
 </div>
 </dd>
 <dt>RPS</dt>
 <dd><p class="first">Several combinations for RPS have been tested. To improve latency, we offloaded the IRQ handling processors by using only CPUs 1–8 and 10–17. Unlike IRQ&#8217;s <em>smp_affinity</em>, the <em>rps_cpus</em> sysfs file entry doesn&#8217;t have a <em>_list</em> counterpart, so we use bitmasks to list the CPUs to which RPS can forward traffic<a class="footnote-reference" href="#id17" id="id14"><sup>1</sup></a>:</p>
-<div class="last highlight-bash"><div class="highlight"><pre>$ <span class="nb">echo</span> <span class="s2">&quot;00000000,0003fdfe&quot;</span> &gt; /sys/class/net/eth0/queues/rx-0/rps_cpus
+<div class="last highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="s2">&quot;00000000,0003fdfe&quot;</span> &gt; /sys/class/net/eth0/queues/rx-0/rps_cpus
 $ <span class="nb">echo</span> <span class="s2">&quot;00000000,0003fdfe&quot;</span> &gt; /sys/class/net/eth0/queues/rx-1/rps_cpus
 </pre></div>
 </div>
 </dd>
 <dt>Transmit Packet Steering (XPS)</dt>
 <dd><p class="first">All NUMA 0 processors (including HyperThreading, i.e. CPUs 0-8, 18-26) were set to tx-0 and NUMA 1 (CPUs 9-17, 27-37) to tx-1<a class="footnote-reference" href="#id18" id="id15"><sup>2</sup></a>:</p>
-<div class="last highlight-bash"><div class="highlight"><pre>$ <span class="nb">echo</span> <span class="s2">&quot;00000000,07fc01ff&quot;</span> &gt; /sys/class/net/eth0/queues/tx-0/xps_cpus
+<div class="last highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="s2">&quot;00000000,07fc01ff&quot;</span> &gt; /sys/class/net/eth0/queues/tx-0/xps_cpus
 $ <span class="nb">echo</span> <span class="s2">&quot;0000000f,f803fe00&quot;</span> &gt; /sys/class/net/eth0/queues/tx-1/xps_cpus
 </pre></div>
 </div>
 </dd>
 <dt>Receive Flow Steering (RFS)</dt>
 <dd><p class="first">We&#8217;re planning to use 60k permanent connections, official documentation suggests to round up it to the nearest power of two:</p>
-<div class="last highlight-bash"><div class="highlight"><pre>$ <span class="nb">echo</span> <span class="m">65536</span> &gt; /proc/sys/net/core/rps_sock_flow_entries
+<div class="last highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="m">65536</span> &gt; /proc/sys/net/core/rps_sock_flow_entries
 $ <span class="nb">echo</span> <span class="m">32768</span> &gt; /sys/class/net/eth0/queues/rx-0/rps_flow_cnt
 $ <span class="nb">echo</span> <span class="m">32768</span> &gt; /sys/class/net/eth0/queues/rx-1/rps_flow_cnt
 </pre></div>
@@ -490,14 +491,14 @@ $ <span class="nb">echo</span> <span class="m">32768</span> &gt; /sys/class/net/
 </dd>
 <dt>Nginx</dt>
 <dd><p class="first">Nginx uses 18 workers, each worker has it&#8217;s own CPU (0-17). This is set by the <a class="reference external" href="http://nginx.org/en/docs/ngx_core_module.html#worker_cpu_affinity">worker_cpu_affinity</a> option:</p>
-<div class="last highlight-nginx"><div class="highlight"><pre><span class="k">workers</span> <span class="mi">18</span><span class="p">;</span>
+<div class="last highlight-nginx"><div class="highlight"><pre><span></span><span class="k">workers</span> <span class="mi">18</span><span class="p">;</span>
 <span class="k">worker_cpu_affinity</span> <span class="mi">1</span> <span class="mi">10</span> <span class="mi">100</span> <span class="mi">1000</span> <span class="mi">10000</span> <span class="s">...</span><span class="p">;</span>
 </pre></div>
 </div>
 </dd>
 <dt><a class="reference external" href="https://github.com/MachineZone/tcpkali">Tcpkali</a></dt>
 <dd><p class="first">Tcpkali doesn&#8217;t have built-in CPU affinity support. In order to make use of RFS, we run tcpkali in a taskset and tune the scheduler to make thread migrations happen rarely:</p>
-<div class="last highlight-bash"><div class="highlight"><pre>$ <span class="nb">echo</span> <span class="m">10000000</span> &gt; /proc/sys/kernel/sched_migration_cost_ns
+<div class="last highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="m">10000000</span> &gt; /proc/sys/kernel/sched_migration_cost_ns
 $ taskset -ac 0-17 tcpkali --threads <span class="m">18</span> ...
 </pre></div>
 </div>
@@ -509,7 +510,7 @@ $ taskset -ac 0-17 tcpkali --threads <span class="m">18</span> ...
 <p>RedHat&#8217;s <a class="reference external" href="https://fedorahosted.org/tuned/">tuned</a> was also used with the network-latency profile on.</p>
 <p>To minimize the influence of nf_conntrack, <a class="reference external" href="http://serverfault.com/a/536303/99164">NOTRACK rules were added</a>.</p>
 <p>Sysctls was tuned to support large number of tcp connections:</p>
-<div class="highlight-cfg"><div class="highlight"><pre><span class="na">fs.file-max</span> <span class="o">=</span> <span class="s">1024000</span>
+<div class="highlight-cfg"><div class="highlight"><pre><span></span><span class="na">fs.file-max</span> <span class="o">=</span> <span class="s">1024000</span>
 <span class="na">net.ipv4.ip_local_port_range</span> <span class="o">=</span> <span class="s">&quot;2000 65535&quot;</span>
 <span class="na">net.ipv4.tcp_max_tw_buckets</span> <span class="o">=</span> <span class="s">2000000</span>
 <span class="na">net.ipv4.tcp_tw_reuse</span> <span class="o">=</span> <span class="s">1</span>
@@ -519,7 +520,7 @@ $ taskset -ac 0-17 tcpkali --threads <span class="m">18</span> ...
 <span class="na">net.ipv4.tcp_low_latency</span> <span class="o">=</span> <span class="s">1</span>
 </pre></div>
 </div>
-<p class="rubric">Footnotes</p>
+<div data-disqus-identifier="Comparison of Networking Solutions for Kubernetes" data-disqus-shortname="mzresearch" id="disqus_thread"></div><p class="rubric">Footnotes</p>
 <table class="docutils footnote" frame="void" id="id17" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
